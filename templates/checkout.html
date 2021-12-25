@@ -8,7 +8,7 @@
     <div class="container wow fadeIn">
 
         <!-- Heading -->
-        <h2 class="my-5 h2 text-center">Checkout form</h2>
+        <h2 class="my-5 h2 text-center">Оформление заказа</h2>
 
         <!--Grid row-->
         <div class="row">
@@ -22,37 +22,37 @@
                     <form method="POST" class="card-body">
                         {% csrf_token %}
 
-                        <h3>Shipping address</h3>
+                        <h3>Адрес доставки</h3>
 
                         <div class='hideable_shipping_form'>
 
                             <div class="md-form mb-5">
-                                <input type='text' placeholder='1234 Main St' id='shipping_address'
+                                <input type='text' placeholder='ул. Пушкина д. 12' id='shipping_address'
                                        name='shipping_address'
                                        class='form-control'/>
-                                <label for="shipping_address" class="">Address</label>
+                                <label for="shipping_address" class="">Улица, квартал, корпус</label>
                             </div>
 
                             <div class="md-form mb-5">
-                                <input type='text' placeholder='Apartment or suite' id='shipping_address2'
+                                <input type='text' placeholder='1' id='shipping_address2'
                                        name='shipping_address2' class='form-control'/>
-                                <label for="shipping_address2" class="">Address 2 (optional)</label>
+                                <label for="shipping_address2" class="">Номер квартиры</label>
                             </div>
 
                             <div class="row">
                                 <div class="col-lg-4 col-md-12 mb-4">
-                                    <label for="country">Country</label>
+                                    <label for="country">Страна</label>
                                     {{ form.shipping_country }}
                                     <div class="invalid-feedback">
-                                        Please select a valid country.
+                                        Пожалуйста выберите страну.
                                     </div>
                                 </div>
                                 <div class="col-lg-4 col-md-6 mb-4">
                                     <label for="shipping_zip">Zip</label>
-                                    <input type='text' placeholder='Zip code' id='shipping_zip' name='shipping_zip'
+                                    <input type='text' placeholder='ZIP-код' id='shipping_zip' name='shipping_zip'
                                            class='form-control'/>
                                     <div class="invalid-feedback">
-                                        Zip code required.
+                                        Zip код неверен.
                                     </div>
                                 </div>
                             </div>
@@ -60,15 +60,13 @@
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input" name="same_billing_address"
                                        id="same_billing_address">
-                                <label class="custom-control-label" for="same_billing_address">Billing address is the
-                                    same
-                                    as my shipping address</label>
+                                <label class="custom-control-label" for="same_billing_address">
+Платежный адрес совпадает с моим адресом доставки</label>
                             </div>
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input" name="set_default_shipping"
                                        id="set_default_shipping">
-                                <label class="custom-control-label" for="set_default_shipping">Save as default shipping
-                                    address</label>
+                                <label class="custom-control-label" for="set_default_shipping">Сохранить как адрес доставки по умолчанию</label>
                             </div>
 
                         </div>
@@ -77,36 +75,34 @@
                         <div class="custom-control custom-checkbox">
                             <input type="checkbox" class="custom-control-input" name="use_default_shipping"
                                    id="use_default_shipping">
-                            <label class="custom-control-label" for="use_default_shipping">Use default shipping address:
-                                {{
-                                default_shipping_address.street_address|truncatechars:10 }}</label>
+                            <label class="custom-control-label" for="use_default_shipping">Использовать адресс доставки по умолчанию: {{default_shipping_address.street_address|truncatechars:20 }}</label>
                         </div>
                         {% endif %}
 
                         <hr>
 
-                        <h3>Billing address</h3>
+                        <h3>Платежный адрес</h3>
 
                         <div class='hideable_billing_form'>
                             <div class="md-form mb-5">
-                                <input type='text' placeholder='1234 Main St' id='billing_address'
+                                <input type='text' placeholder='ул. Пушкина д. 12' id='billing_address'
                                        name='billing_address'
                                        class='form-control'/>
-                                <label for="billing_address" class="">Address</label>
+                                <label for="billing_address" class="">Улица, квартал, корпус</label>
                             </div>
 
                             <div class="md-form mb-5">
-                                <input type='text' placeholder='Apartment or suite' id='billing_address2'
+                                <input type='text' placeholder='1' id='billing_address2'
                                        name='billing_address2' class='form-control'/>
-                                <label for="billing_address2" class="">Address 2 (optional)</label>
+                                <label for="billing_address2" class="">Номер квартиры</label>
                             </div>
 
                             <div class="row">
                                 <div class="col-lg-4 col-md-12 mb-4">
-                                    <label for="country">Country</label>
+                                    <label for="country">Страна</label>
                                     {{ form.billing_country }}
                                     <div class="invalid-feedback">
-                                        Please select a valid country.
+                                        Пожалуйста выберите страну.
                                     </div>
                                 </div>
 
@@ -124,8 +120,7 @@
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input" name="set_default_billing"
                                        id="set_default_billing">
-                                <label class="custom-control-label" for="set_default_billing">Save as default billing
-                                    address</label>
+                                <label class="custom-control-label" for="set_default_billing">Сохранить как платежный адрес по умолчанию</label>
                             </div>
 
                         </div>
@@ -134,14 +129,13 @@
                         <div class="custom-control custom-checkbox">
                             <input type="checkbox" class="custom-control-input" name="use_default_billing"
                                    id="use_default_billing">
-                            <label class="custom-control-label" for="use_default_billing">Use default billing address:
-                                {{
-                                default_billing_address.street_address|truncatechars:10 }}</label>
+                            <label class="custom-control-label" for="use_default_billing">Использовать платежный адрес по умолчанию:
+                                {{default_billing_address.street_address|truncatechars:20}}</label>
                         </div>
                         {% endif %}
                         <hr>
 
-                        <h3>Payment option</h3>
+                        <h3>Способ оплаты</h3>
 
                         <div class="d-block my-3">
                             {% for value, name in form.fields.payment_option.choices %}
@@ -154,7 +148,7 @@
                         </div>
 
                         <hr class="mb-4">
-                        <button class="btn btn-primary btn-lg btn-block" type="submit">Continue to checkout</button>
+                        <button class="btn btn-primary btn-lg btn-block" type="submit">Продолжить</button>
 
                     </form>
 

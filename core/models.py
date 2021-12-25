@@ -20,6 +20,7 @@ ADDRESS_CHOICES = (
     ('S', 'Shipping'),
 )
 
+
 class Item(models.Model):
     title = models.CharField(max_length=100)
     price = models.FloatField()
@@ -29,6 +30,9 @@ class Item(models.Model):
     slug = models.SlugField()
     description = models.TextField()
     quantity = models.IntegerField(default=1)
+
+    class Meta:
+        ordering = ['-id']
 
     def __str__(self):
         return self.title
