@@ -5,15 +5,15 @@
     <div class="container">
 
     <div class="table-responsive text-nowrap">
-    <h2>Order Summary</h2>
+    <h2>Корзина</h2>
     <table class="table">
         <thead>
         <tr>
             <th scope="col">#</th>
-            <th scope="col">Item title</th>
-            <th scope="col">Price</th>
-            <th scope="col">Quantity</th>
-            <th scope="col">Total Item Price</th>
+            <th scope="col">Наименование</th>
+            <th scope="col">Цена</th>
+            <th scope="col">Количество</th>
+            <th scope="col">Итоговая стоимость</th>
         </tr>
         </thead>
         <tbody>
@@ -30,7 +30,7 @@
             <td>
             {% if order_item.item.discount_price %}
                 ${{ order_item.get_total_discount_price }}
-                <span class="badge badge-primary">Saving {{ order_item.get_amount_saved }}$</span>
+                <span class="badge badge-primary">Скидка {{ order_item.get_amount_saved }}$</span>
             {% else %}
                 ${{ order_item.get_total_item_price }}
             {% endif %}
@@ -41,29 +41,29 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan='5'>Your cart is empty</td>
+            <td colspan='5'>Ваша корзина пуста</td>
         </tr>
         <tr>
             <td colspan="5">
-            <a class='btn btn-primary float-right' href="{% url 'core:home' %}">Continue shopping</a>
+            <a class='btn btn-primary float-right' href="{% url 'core:home' %}">Продолжить покупки</a>
             </td>
         </tr>
         {% endfor %}
         {% if object.coupon %}
         <tr>
-            <td colspan="4"><b>Coupon</b></td>
+            <td colspan="4"><b>Купон</b></td>
             <td><b>-${{ object.coupon.amount }}</b></td>
         </tr>
         {% endif %}
         {% if object.get_total %}
         <tr>
-            <td colspan="4"><b>Order Total</b></td>
+            <td colspan="4"><b>Итого</b></td>
             <td><b>${{ object.get_total }}</b></td>
         </tr>
         <tr>
             <td colspan="5">
-            <a class='btn btn-warning float-right ml-2' href="{% url 'core:checkout' %}">Proceed to checkout</a>
-            <a class='btn btn-primary float-right' href="{% url 'core:home' %}">Continue shopping</a>
+            <a class='btn btn-warning float-right ml-2' href="{% url 'core:checkout' %}">Перейти к оформлению</a>
+            <a class='btn btn-primary float-right' href="{% url 'core:home' %}">Продолжить покупки</a>
             </td>
         </tr>
         {% endif %}
