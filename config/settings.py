@@ -5,7 +5,7 @@ ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 DEBUG = True
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '-05sgp9!deq=q1nltm@^^2cc+v29i(tyybv3v2t77qi66czazj'
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'django_countries',
+    'corsheaders',
 
     'core',
 ]
@@ -29,6 +30,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -100,3 +102,9 @@ INTERNAL_IPS = [
 ]
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+
+STRIPE_PUBLIC_KEY = 'pk_test_51KArYdCS5qOCNaZE2ZQANV6io1pUzwtEpcZivbDz' \
+                    'QVx4mYD0i8uA3qWzYY5CKhotKqMKMONfY0nUJe2Fe1jB1IZ200Iyn6ookB'
+STRIPE_SECRET_KEY = 'sk_test_51KArYdCS5qOCNaZEQMSvhzt2d5qBdSVi2BTNP9' \
+                    'OV5sAKugSMnZ1BE8UWs4ReRfeZnnYViK07tjYIPXbq5pbs2loM009HsdJFtA'

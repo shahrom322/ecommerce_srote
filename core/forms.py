@@ -92,7 +92,8 @@ class CheckoutForm(forms.Form):
                 shipping_address.save()
                 return shipping_address
 
-        raise forms.ValidationError('Пожалуйста, заполните обязательные поля адреса доставки.')
+        raise forms.ValidationError(
+            'Пожалуйста, заполните обязательные поля адреса доставки.')
 
     def set_same_billing_address(self, address, order):
         """Если адрес счета тот же, что у адреса доставки."""

@@ -1,13 +1,15 @@
+import stripe
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, DetailView
 
-from core.models import Item, OrderItem, Order, Address
+from core.models import Item, Order, Address, Payment
 from core.forms import CheckoutForm
+from core.services import create_charge_or_error
 
 
 class HomeView(ListView):
@@ -59,7 +61,7 @@ class CheckoutView(LoginRequiredMixin, View):
         return render(self.request, 'checkout.html', context)
 
     def post(self, *args, **kwargs):
-        """ """
+        """Валидируем форму, сохраняем."""
         try:
             order = Order.objects.get(user=self.request.user, ordered=False)
         except Order.DoesNotExist:
@@ -79,21 +81,47 @@ class CheckoutView(LoginRequiredMixin, View):
             elif form.cleaned_data['use_default_billing']:
                 form.set_default_billing_address(self.request.user, order)
             else:
-                # Пользователь ввел новый платежный адрес.
                 form.set_new_billing_address(self.request.user, order)
-
-            payment_option = form.cleaned_data.get('payment_option')
-
-            # if payment_option == 'S':
-            #     return redirect('core:payment', payment_option='stripe')
-            # elif payment_option == 'P':
-            #     return redirect('core:payment', payment_option='paypal')
-            # else:
-            #     messages.warning(
-            #         self.request, "Invalid payment option selected")
-            #     return redirect('core:checkout')
             messages.info(self.request, 'Успешно')
             return redirect('/')
+
+
+class PaymentView(LoginRequiredMixin, View):
+    """Вывод страницы с подтверждением оплаты."""
+
+    def get(self, *args, **kwargs):
+        order = Order.objects.get(user=self.request.user, ordered=False)
+        if order.billing_address:
+            context = {
+                'order': order,
+                'DISPLAY_COUPON_FORM': False,
+                'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
+            }
+        return render(self.request, 'payment.html', context)
+
+    def post(self, *args, **kwargs):
+        order = Order.objects.get(user=self.request.user, ordered=False)
+        token = self.request.POST.get('stripeToken')
+        amount = int(order.get_total() * 100)     # в центах
+
+        charge = create_charge_or_error(amount, 'usd', token)
+        # Если соединение прошло
+        if isinstance(charge, stripe.Charge):
+            payment = Payment()
+            payment.stripe_charge_id = charge['id']
+            payment.user = self.request.user
+            payment.amount = amount
+            payment.save()
+
+            order.ordered = True
+            order.payment = payment
+            order.save()
+            messages.success(self.request, 'Успешно')
+            return redirect('/')
+
+        # Если нет, то функция вернула ошибку
+        messages.error(self.request, charge)
+        return redirect('/')
 
 
 class OrderSummaryView(LoginRequiredMixin, View):
@@ -101,7 +129,8 @@ class OrderSummaryView(LoginRequiredMixin, View):
 
     def get(self, *args, **kwargs):
         try:
-            order = Order.objects.get(user=self.request.user, ordered=False)
+            order = Order.objects.prefetch_related(
+                'items').get(user=self.request.user, ordered=False)
             return render(self.request, 'order_summary.html', {'object': order})
 
         except Order.DoesNotExist:
@@ -111,6 +140,7 @@ class OrderSummaryView(LoginRequiredMixin, View):
 
 class ItemDetailView(DetailView):
     """Вывод страницы с информацией о товаре."""
+
     model = Item
     template_name = 'product.html'
     context_object_name = 'item'
