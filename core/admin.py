@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Item, OrderItem, Order, Address, Payment, Coupon
+from .models import Item, OrderItem, Order, Address, Payment, Coupon, Category
 
 
 def make_refund_accepted(modeladmin, request, queryset):
@@ -34,10 +34,14 @@ class OrderAdmin(admin.ModelAdmin):
     actions = [make_refund_accepted]
 
 
-admin.site.register(Item)
+class ItemAdmin(admin.ModelAdmin):
+    prepopulated_fields = {'slug': ('title',), }
+
+
+admin.site.register(Item, ItemAdmin)
 admin.site.register(OrderItem)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(Address)
 admin.site.register(Payment)
 admin.site.register(Coupon)
-
+admin.site.register(Category)

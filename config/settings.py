@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'django_countries',
     'corsheaders',
+    'django_activeurl',
 
     'core',
 ]

@@ -1,3 +1,12 @@
+"""
+Интернет магазин для покупки одежды.
+
+1. Пользователь регистрируется на сайте.
+2. Добавляет товар в корзину.
+3. Заказ формируется, выводится итоговая стоимость и количество товаров.
+4. Пользователь заполняет данные для отправки заказа.
+5. Подтверждает оплату.
+"""
 from django.utils import timezone
 from django.conf import settings
 from django.contrib import messages
@@ -6,35 +15,40 @@ from django.urls import reverse
 from django_countries.fields import CountryField
 
 
-CATEGORY_CHOICES = (
-    ('S', 'Shirt'),
-    ('SW', 'Sport wear'),
-    ('OW', 'Outwear'),
-)
-
+# Приоритет товара, влияет на отображение названия товара на странице.
 LABEL_CHOICES = (
-    ('P', 'primary'),
-    ('S', 'secondary'),
-    ('D', 'danger'),
+    ('Новинка', 'primary'),
+    ('Обычный', 'secondary'),
+    ('Скидка', 'danger'),
 )
 
+# Категории адресов пользователя
 ADDRESS_CHOICES = (
     ('B', 'Billing'),
     ('S', 'Shipping'),
 )
 
 
+class Category(models.Model):
+    """Модель с категориями товаров."""
+    title = models.CharField('Наименование', max_length=100)
+
+    def __str__(self):
+        return self.title
+
+
 class Item(models.Model):
     """Модель товара в магазине."""
-    title = models.CharField(max_length=100)
-    price = models.FloatField()
-    discount_price = models.FloatField(blank=True, null=True)
-    category = models.CharField(choices=CATEGORY_CHOICES, max_length=2)
-    label = models.CharField(choices=LABEL_CHOICES, max_length=1)
-    slug = models.SlugField()
-    description = models.TextField()
-    quantity = models.IntegerField(default=1)
-    image = models.ImageField()
+    title = models.CharField('Наименование', max_length=100)
+    price = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='Цена')
+    discount_price = models.DecimalField(
+        max_digits=9, decimal_places=2, blank=True, null=True, verbose_name='Скидочная цена')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name='Категория')
+    label = models.CharField(choices=LABEL_CHOICES, max_length=15, verbose_name='Приоритет товара')
+    slug = models.SlugField(unique=True)
+    description = models.TextField('Описание')
+    quantity = models.IntegerField(default=1, verbose_name='Количество')
+    image = models.ImageField('Изображение')
 
     class Meta:
         ordering = ['-id']
@@ -121,55 +135,66 @@ class Item(models.Model):
 
 
 class OrderItem(models.Model):
+    """Модель одной позиции товара в корзине пользователя."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
-    ordered = models.BooleanField(default=False)
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    quantity = models.IntegerField(default=1)
+                             on_delete=models.CASCADE, verbose_name='Пользователь')
+    ordered = models.BooleanField(default=False, verbose_name='Заказ подтвержден')
+    item = models.ForeignKey(Item, on_delete=models.CASCADE, verbose_name='Товар')
+    quantity = models.IntegerField(default=1, verbose_name='Количество')
 
     def __str__(self):
         return f'{self.quantity} of {self.item.title}'
 
     def get_total_item_price(self):
+        """Цена одной позиции товара, с учетом его количества."""
         return self.quantity * self.item.price
 
     def get_total_discount_price(self):
+        """Скидочная цена одной позиции товара, с учетом его стоимости."""
         return self.quantity * self.item.discount_price
 
     def get_amount_saved(self):
+        """Разница регулярной цены и скидочной."""
         return self.get_total_item_price() - self.get_total_discount_price()
 
     def get_final_price(self):
+        """Итоговая стоимость одной позиции в корзине."""
         if self.item.discount_price:
             return self.get_total_discount_price()
         return self.get_total_item_price()
 
 
 class Order(models.Model):
+    """Модель корзины пользователя."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
-    ref_code = models.CharField(max_length=20, blank=True, null=True)
-    items = models.ManyToManyField(OrderItem)
-    start_date = models.DateTimeField(auto_now_add=True)
-    ordered_date = models.DateTimeField()
-    ordered = models.BooleanField(default=False)
+                             on_delete=models.CASCADE, verbose_name='Пользователь')
+    ref_code = models.CharField(max_length=20, blank=True, null=True)       # TODO verbose name
+    items = models.ManyToManyField(OrderItem, verbose_name='Товары')
+    start_date = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    ordered_date = models.DateTimeField(verbose_name='Дата подтверждения')
+    ordered = models.BooleanField(default=False, verbose_name='Заказ подтвержден')
     shipping_address = models.ForeignKey(
-        'Address', related_name='shipping_address', on_delete=models.SET_NULL, blank=True, null=True)
+        'Address', related_name='shipping_address', on_delete=models.SET_NULL,
+        blank=True, null=True, verbose_name='Адрес доставки'
+    )
     billing_address = models.ForeignKey(
-        'Address', related_name='billing_address', on_delete=models.SET_NULL, blank=True, null=True)
+        'Address', related_name='billing_address', on_delete=models.SET_NULL,
+        blank=True, null=True, verbose_name='Рассчетный адрес'
+    )
     payment = models.ForeignKey(
-        'Payment', on_delete=models.SET_NULL, blank=True, null=True)
+        'Payment', on_delete=models.SET_NULL, blank=True, null=True, verbose_name='Оплата')
     coupon = models.ForeignKey(
-        'Coupon', on_delete=models.SET_NULL, blank=True, null=True)
-    being_delivered = models.BooleanField(default=False)
-    received = models.BooleanField(default=False)
-    refund_requested = models.BooleanField(default=False)
-    refund_granted = models.BooleanField(default=False)
+        'Coupon', on_delete=models.SET_NULL, blank=True, null=True, verbose_name='Промокод')
+    being_delivered = models.BooleanField(default=False, verbose_name='Доставлено')
+    received = models.BooleanField(default=False, verbose_name='Получено')
+    refund_requested = models.BooleanField(default=False, verbose_name='Запрошен возврат')
+    refund_granted = models.BooleanField(default=False, verbose_name='Возврат предоставлен')
 
     def __str__(self):
         return self.user.username
 
     def get_total(self):
+        """Возвращает итоговую стоимость корзины с учетом промокода."""
         total = 0
         for order_item in self.items.all():
             total += order_item.get_final_price()
@@ -178,6 +203,7 @@ class Order(models.Model):
         return total
 
     def confirm_order_items(self):
+        """Подтверждает все позиции в корзине."""
         order_items = self.items.all()
         order_items.update(ordered=True)
         for item in order_items:
@@ -185,14 +211,17 @@ class Order(models.Model):
 
 
 class Address(models.Model):
+    """Модель адреса пользователя, пользователь может сохранить адрес как адрес
+    по умолчанию и в дальнейшем использовать его.
+    CountryField из django_countries для возможности выбора страны."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
-    street_address = models.CharField(max_length=100)
-    apartment_address = models.CharField(max_length=100)
-    country = CountryField(multiple=False)
-    zip = models.CharField(max_length=100)
-    address_type = models.CharField(max_length=1, choices=ADDRESS_CHOICES)
-    default = models.BooleanField(default=False)
+                             on_delete=models.CASCADE, verbose_name='Пользователь')
+    street_address = models.CharField(max_length=100, verbose_name='Улица')
+    apartment_address = models.CharField(max_length=100, verbose_name='Дом')
+    country = CountryField(multiple=False, verbose_name='Страна')
+    zip = models.CharField(max_length=100, verbose_name='ZIP код')
+    address_type = models.CharField(max_length=1, choices=ADDRESS_CHOICES, verbose_name='Тип адреса')
+    default = models.BooleanField(default=False, verbose_name='По умолчанию')
 
     def __str__(self):
         return self.user.username
@@ -202,29 +231,34 @@ class Address(models.Model):
 
 
 class Payment(models.Model):
-    stripe_charge_id = models.CharField(max_length=50)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.SET_NULL, blank=True, null=True)
-    amount = models.FloatField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    """Модель для Stripe оплаты заказа."""
+    stripe_charge_id = models.CharField(max_length=50, verbose_name='ID')
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        blank=True, null=True, verbose_name='Пользователь'
+    )
+    amount = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='Сумма')
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Время')
 
     def __str__(self):
         return self.user.username
 
 
 class Coupon(models.Model):
-    code = models.CharField(max_length=15)
-    amount = models.FloatField()
+    """Модель скидочного промокода"""
+    code = models.CharField(max_length=15, verbose_name='Код')
+    amount = models.DecimalField(max_digits=9, decimal_places=2, verbose_name='Сумма скидки')
 
     def __str__(self):
         return self.code
 
 
 class Refund(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    reason = models.TextField()
-    accepted = models.BooleanField(default=False)
-    email = models.EmailField()
+    """Модель возврата."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, verbose_name='Заказ')
+    reason = models.TextField(verbose_name='Причина')
+    accepted = models.BooleanField(default=False, verbose_name='Подтвержден')
+    email = models.EmailField(verbose_name='Почта')
 
     def __str__(self):
         return f'{self.pk}'

@@ -3,13 +3,15 @@ from django.urls import path
 from core.views import (
         CheckoutView, HomeView, ItemDetailView,
         add_item_to_cart, remove_from_cart, OrderSummaryView,
-        remove_single_item_from_cart, PaymentView, AddCouponView
+        remove_single_item_from_cart, PaymentView, AddCouponView,
+        ProductsView
 )
 
 app_name = 'core'
 
 urlpatterns = [
     path('', HomeView.as_view(), name='home'),
+    path('category/<int:id>', ProductsView.as_view(), name='products-by-category'),
     path('checkout/', CheckoutView.as_view(), name='checkout'),
     path('payment/<payment_option>/', PaymentView.as_view(), name='payment'),
     path('order-summary/', OrderSummaryView.as_view(), name='order-summary'),

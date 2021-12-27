@@ -7,7 +7,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, DetailView
 
-from core.models import Item, Order, Address, Payment
+from core.models import Item, Order, Address, Payment, Category
 from core.forms import CheckoutForm, CouponForm
 from core.services import create_charge_or_error, get_coupon
 
@@ -17,8 +17,28 @@ class HomeView(ListView):
 
     model = Item
     template_name = 'home.html'
-    context_object_name = 'items'
     paginate_by = 1
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        return {
+            'items': Item.objects.all(),
+            'categories': Category.objects.all()
+        }
+
+
+class ProductsView(ListView):
+    """Страница с товарами по категориям"""
+    model = Item
+    template_name = 'home.html'
+    paginate_by = 1
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        category = get_object_or_404(Category, id=self.kwargs.get('id'))
+        items = Item.objects.filter(category=category)
+        return {
+            'items': items,
+            'categories': Category.objects.all()
+        }
 
 
 class CheckoutView(LoginRequiredMixin, View):
@@ -85,12 +105,9 @@ class CheckoutView(LoginRequiredMixin, View):
             else:
                 form.set_new_billing_address(self.request.user, order)
 
-            # Перенаправляем на страницу по способу оплаты
+            # TODO Перенаправляем на страницу по способу оплаты
             payment_option = form.cleaned_data['payment_option']
-            if payment_option == 'S':
-                return redirect('core:payment', payment_option='stripe')
-            elif payment_option == 'P':
-                return redirect('core:payment', payment_option='paypal')
+            return redirect('core:payment', payment_option='stripe')
 
 
 class PaymentView(LoginRequiredMixin, View):
