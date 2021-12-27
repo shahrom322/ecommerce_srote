@@ -1,5 +1,9 @@
 import stripe
 from django.conf import settings
+from django.contrib import messages
+from django.shortcuts import redirect
+
+from core.models import Coupon
 
 
 def create_charge_or_error(amount, currency, token):
@@ -25,8 +29,7 @@ def create_charge_or_error(amount, currency, token):
 
     except stripe.error.InvalidRequestError as e:
         # Invalid parameters were supplied to Stripe's API
-        raise e
-        return "Не верные параметры."
+        return 'Не верные параметры.'
 
     except stripe.error.AuthenticationError as e:
         # Authentication with Stripe's API failed
@@ -45,6 +48,16 @@ def create_charge_or_error(amount, currency, token):
 
     except Exception as e:
         # send an email to ourselves
-        return "Произошла непредвиденная ошибка. Мы уже работаем над этим."
+        return "Произошла непредвиденная ошибка."
 
     return charge
+
+
+def get_coupon(request, code):
+    """Возвращает существующий промокод."""
+    try:
+        coupon = Coupon.objects.get(code=code)
+        return coupon
+    except Coupon.DoesNotExist:
+        messages.warning(request, 'Данный промокод не найден')
+        return redirect('/')

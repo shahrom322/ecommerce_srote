@@ -8,8 +8,8 @@ from django.views import View
 from django.views.generic import ListView, DetailView
 
 from core.models import Item, Order, Address, Payment
-from core.forms import CheckoutForm
-from core.services import create_charge_or_error
+from core.forms import CheckoutForm, CouponForm
+from core.services import create_charge_or_error, get_coupon
 
 
 class HomeView(ListView):
@@ -18,7 +18,7 @@ class HomeView(ListView):
     model = Item
     template_name = 'home.html'
     context_object_name = 'items'
-    paginate_by = 10
+    paginate_by = 1
 
 
 class CheckoutView(LoginRequiredMixin, View):
@@ -36,7 +36,7 @@ class CheckoutView(LoginRequiredMixin, View):
         form = CheckoutForm()
         context = {
             'form': form,
-            # 'couponform': CouponForm(),
+            'couponform': CouponForm(),
             'order': order,
             'DISPLAY_COUPON_FORM': True
         }
@@ -65,7 +65,9 @@ class CheckoutView(LoginRequiredMixin, View):
         try:
             order = Order.objects.get(user=self.request.user, ordered=False)
         except Order.DoesNotExist:
-            messages.warning('У вас нет активного заказа. Для начала добавте продукт в корзину.')
+            messages.warning(
+                self.request,
+                'У вас нет активного заказа. Для начала добавте продукт в корзину.')
             return redirect('core:home')
 
         form = CheckoutForm(self.request.POST or None)
@@ -82,22 +84,33 @@ class CheckoutView(LoginRequiredMixin, View):
                 form.set_default_billing_address(self.request.user, order)
             else:
                 form.set_new_billing_address(self.request.user, order)
-            messages.info(self.request, 'Успешно')
-            return redirect('/')
+
+            # Перенаправляем на страницу по способу оплаты
+            payment_option = form.cleaned_data['payment_option']
+            if payment_option == 'S':
+                return redirect('core:payment', payment_option='stripe')
+            elif payment_option == 'P':
+                return redirect('core:payment', payment_option='paypal')
 
 
 class PaymentView(LoginRequiredMixin, View):
     """Вывод страницы с подтверждением оплаты."""
 
     def get(self, *args, **kwargs):
-        order = Order.objects.get(user=self.request.user, ordered=False)
+        try:
+            order = Order.objects.get(user=self.request.user, ordered=False)
+        except Order.DoesNotExist:
+            messages.warning(self.request, 'У вас нет активного заказа')
+            return redirect('/')
         if order.billing_address:
             context = {
                 'order': order,
                 'DISPLAY_COUPON_FORM': False,
                 'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
             }
-        return render(self.request, 'payment.html', context)
+            return render(self.request, 'payment.html', context)
+        messages.warning(self.request, 'Вы не указали адрес доставки.')
+        return redirect('/')
 
     def post(self, *args, **kwargs):
         order = Order.objects.get(user=self.request.user, ordered=False)
@@ -107,12 +120,13 @@ class PaymentView(LoginRequiredMixin, View):
         charge = create_charge_or_error(amount, 'usd', token)
         # Если соединение прошло
         if isinstance(charge, stripe.Charge):
-            payment = Payment()
-            payment.stripe_charge_id = charge['id']
-            payment.user = self.request.user
-            payment.amount = amount
-            payment.save()
+            payment = Payment.objects.create(
+                stripe_charge_id=charge['id'],
+                user=self.request.user,
+                amount=amount
+            )
 
+            order.confirm_order_items()
             order.ordered = True
             order.payment = payment
             order.save()
@@ -148,6 +162,7 @@ class ItemDetailView(DetailView):
 
 @login_required
 def add_item_to_cart(request, slug):
+    """Добавляет один товар в корзину пользователя."""
     item = get_object_or_404(Item, slug=slug)
     item.add_item_to_cart(request)
     return redirect(request.META.get('HTTP_REFERER'))
@@ -155,6 +170,7 @@ def add_item_to_cart(request, slug):
 
 @login_required
 def remove_from_cart(request, slug):
+    """Удаляет позицию товара из корзины пользователя."""
     item = get_object_or_404(Item, slug=slug)
     item.remove_item_from_cart(request)
     return redirect(request.META.get('HTTP_REFERER'), slug=slug)
@@ -162,6 +178,26 @@ def remove_from_cart(request, slug):
 
 @login_required
 def remove_single_item_from_cart(request, slug):
+    """Удаляет из корзины один экземпляр товара."""
     item = get_object_or_404(Item, slug=slug)
     item.remove_single_item_from_cart(request)
     return redirect(request.META.get('HTTP_REFERER'), slug=slug)
+
+
+class AddCouponView(LoginRequiredMixin, View):
+    """Добавляет скидочный купон к активному заказу пользователя."""
+    def post(self, *args, **kwargs):
+        form = CouponForm(self.request.POST)
+
+        if form.is_valid():
+            try:
+                order = Order.objects.get(user=self.request.user, ordered=False)
+            except Order.DoesNotExist:
+                messages.warning(self.request, 'У вас нет активного заказа')
+                return redirect('/')
+
+            code = form.cleaned_data.get('code')
+            order.coupon = get_coupon(self.request, code)
+            order.save()
+            messages.success(self.request, 'Промокод активирован')
+            return redirect('core:checkout')

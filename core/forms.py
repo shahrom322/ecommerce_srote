@@ -150,3 +150,12 @@ class CheckoutForm(forms.Form):
 
             return billing_address
         raise forms.ValidationError('Пожалуйста, заполните обязательные поля платежного адреса.')
+
+
+class CouponForm(forms.Form):
+    code = forms.CharField(widget=forms.TextInput(attrs={
+        'class': 'form-control',
+        'placeholder': 'Промокод',
+        'aria-label': 'Recipient\'s username',
+        'aria-describedby': 'basic-addon2'
+    }))
