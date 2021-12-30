@@ -159,3 +159,11 @@ class CouponForm(forms.Form):
         'aria-label': 'Recipient\'s username',
         'aria-describedby': 'basic-addon2'
     }))
+
+
+class RefundForm(forms.Form):
+    reference_code = forms.CharField(label='Код заказа')
+    message = forms.CharField(label='Сообщение', widget=forms.Textarea(attrs={
+        'rows': 4
+    }))
+    email = forms.EmailField(label='Почта')

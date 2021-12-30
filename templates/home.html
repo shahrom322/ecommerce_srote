@@ -42,7 +42,7 @@
 
                 <form class="form-inline">
                     <div class="md-form my-0">
-                        <input class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search">
+                        <input class="form-control mr-sm-2" type="text" placeholder="Поиск" aria-label="Search">
                     </div>
                 </form>
             </div>
@@ -84,7 +84,7 @@
                             <h5>
                                 <strong>
                                     <a href="{{ item.get_absolute_url }}" class="dark-grey-text">{{ item.title }}
-                                        <span class="badge badge-pill {{ item.get_label_display }}-color">NEW</span>
+                                        <span class="badge badge-pill {{ item.get_label_display }}-color">{{ item.label }}</span>
                                     </a>
                                 </strong>
                             </h5>

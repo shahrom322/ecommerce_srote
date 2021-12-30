@@ -6,6 +6,7 @@
 3. Заказ формируется, выводится итоговая стоимость и количество товаров.
 4. Пользователь заполняет данные для отправки заказа.
 5. Подтверждает оплату.
+6. Заказ отслеживается до момента доставки.
 """
 from django.utils import timezone
 from django.conf import settings
@@ -18,7 +19,7 @@ from django_countries.fields import CountryField
 # Приоритет товара, влияет на отображение названия товара на странице.
 LABEL_CHOICES = (
     ('Новинка', 'primary'),
-    ('Обычный', 'secondary'),
+    ('Сезон', 'secondary'),
     ('Скидка', 'danger'),
 )
 
@@ -168,7 +169,10 @@ class Order(models.Model):
     """Модель корзины пользователя."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE, verbose_name='Пользователь')
-    ref_code = models.CharField(max_length=20, blank=True, null=True)       # TODO verbose name
+    reference_code = models.CharField(
+        max_length=20, blank=True, unique=True,
+        null=True, verbose_name='Уникальный ключ'
+    )       # TODO verbose name
     items = models.ManyToManyField(OrderItem, verbose_name='Товары')
     start_date = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     ordered_date = models.DateTimeField(verbose_name='Дата подтверждения')

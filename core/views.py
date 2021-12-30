@@ -7,9 +7,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, DetailView
 
-from core.models import Item, Order, Address, Payment, Category
-from core.forms import CheckoutForm, CouponForm
-from core.services import create_charge_or_error, get_coupon
+from core.models import Item, Order, Address, Payment, Category, Refund
+from core.forms import CheckoutForm, CouponForm, RefundForm
+from core.services import create_charge_or_error, get_coupon, create_reference_code
 
 
 class HomeView(ListView):
@@ -146,6 +146,7 @@ class PaymentView(LoginRequiredMixin, View):
             order.confirm_order_items()
             order.ordered = True
             order.payment = payment
+            order.reference_code = create_reference_code()
             order.save()
             messages.success(self.request, 'Успешно')
             return redirect('/')
@@ -218,3 +219,38 @@ class AddCouponView(LoginRequiredMixin, View):
             order.save()
             messages.success(self.request, 'Промокод активирован')
             return redirect('core:checkout')
+
+
+class RequestRefundView(LoginRequiredMixin, View):
+    """Вывод страницы для заполнения формы возврата."""
+
+    def get(self, *args, **kwargs):
+        form = RefundForm()
+        return render(self.request, 'request_refund.html', {'form': form})
+
+    def post(self, *args, **kwargs):
+        form = RefundForm(self.request.POST)
+        if form.is_valid():
+            reference_code = form.cleaned_data.get('reference_code')
+            message = form.cleaned_data.get('message')
+            email = form.cleaned_data.get('email')
+            try:
+                order = Order.objects.get(reference_code=reference_code)
+            except Order.DoesNotExist:
+                messages.warning(self.request, 'Такого заказа не существует')
+                return redirect('core:request-refund')
+
+            order.refund_requested = True
+            order.save()
+
+            refund = Refund.objects.create(
+                order=order,
+                reason=message,
+                email=email
+            )
+
+            messages.success(self.request, 'Ваша заявка обрабатывается.')
+            return redirect('core:request-refund')
+
+        messages.warning(self.request, 'Ошибка валидации')
+        return redirect('core:request-refund')

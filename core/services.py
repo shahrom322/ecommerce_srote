@@ -1,3 +1,5 @@
+import uuid
+
 import stripe
 from django.conf import settings
 from django.contrib import messages
@@ -61,3 +63,8 @@ def get_coupon(request, code):
     except Coupon.DoesNotExist:
         messages.warning(request, 'Данный промокод не найден')
         return redirect('/')
+
+
+def create_reference_code():
+    """Создает уникальный код для модели Order."""
+    return uuid.uuid4().hex
