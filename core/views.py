@@ -7,9 +7,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, DetailView
 
-from core.models import Item, Order, Address, Payment, Category, Refund
-from core.forms import CheckoutForm, CouponForm, RefundForm
+from core.models import Item, Order, Address, Payment, Category, Refund, UserProfile
+from core.forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
 from core.services import create_charge_or_error, get_coupon, create_reference_code
+
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class HomeView(ListView):
@@ -125,35 +128,94 @@ class PaymentView(LoginRequiredMixin, View):
                 'DISPLAY_COUPON_FORM': False,
                 'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
             }
+            userprofile = self.request.user.userprofile
+            # Получаем доступный список платежных карт пользователя
+            if userprofile.one_click_purchasing:
+                cards = stripe.Customer.list_sources(
+                    userprofile.stripe_customer_id,
+                    limit=3,
+                    object='card'
+                )
+                card_list = cards['data']
+                if len(card_list) > 0:
+                    context.update({
+                        'card': card_list[0]
+                    })
             return render(self.request, 'payment.html', context)
+
         messages.warning(self.request, 'Вы не указали адрес доставки.')
         return redirect('/')
 
     def post(self, *args, **kwargs):
-        order = Order.objects.get(user=self.request.user, ordered=False)
-        token = self.request.POST.get('stripeToken')
-        amount = int(order.get_total() * 100)     # в центах
-
-        charge = create_charge_or_error(amount, 'usd', token)
-        # Если соединение прошло
-        if isinstance(charge, stripe.Charge):
-            payment = Payment.objects.create(
-                stripe_charge_id=charge['id'],
-                user=self.request.user,
-                amount=amount
-            )
-
-            order.confirm_order_items()
-            order.ordered = True
-            order.payment = payment
-            order.reference_code = create_reference_code()
-            order.save()
-            messages.success(self.request, 'Успешно')
+        try:
+            order = Order.objects.get(user=self.request.user, ordered=False)
+        except Order.DoesNotExist:
+            messages.warning(self.request, 'У вас нет активного заказа')
             return redirect('/')
 
-        # Если нет, то функция вернула ошибку
-        messages.error(self.request, charge)
-        return redirect('/')
+        form = PaymentForm(self.request.POST)
+        userprofile = UserProfile.objects.get(user=self.request.user)
+
+        if form.is_valid():
+            save = form.cleaned_data.get('save')
+            use_default = form.cleaned_data.get('use_default')
+            token = form.cleaned_data.get('stripeToken')
+            # Если пользователь решил сохранить данные об оплате
+            if save:
+                if userprofile.stripe_customer_id:
+                    customer = stripe.Customer.retrieve(
+                        userprofile.stripe_customer_id,
+                        # source=token,
+                        # expand=['sources'],
+                    )
+                    print('1block', customer)
+                else:
+                    customer = stripe.Customer.create(
+                        email=self.request.user.email,
+                        source=token,
+                        expand=['sources'],
+                    )
+                    print('2block', customer)
+                    # customer.sources.create(source=token)
+                    userprofile.stripe_customer_id = customer['id']
+                    userprofile.one_click_purchasing = True
+                    userprofile.save()
+
+            amount = int(order.get_total())
+            # Если используем данные по умолчанию, то передаем Stripe ID пользователя
+            if use_default or save:
+                charge = create_charge_or_error(
+                    amount=amount * 100,    # в центах
+                    currency='usd',
+                    customer=userprofile.stripe_customer_id
+                )
+            # Иначе используем токен
+            else:
+
+                charge = create_charge_or_error(
+                    amount=amount * 100,
+                    currency='usd',
+                    token=token
+                )
+            # Если соединение прошло
+            if isinstance(charge, stripe.Charge):
+
+                payment = Payment.objects.create(
+                    stripe_charge_id=charge['id'],
+                    user=self.request.user,
+                    amount=amount
+                )
+
+                order.ordered = True
+                order.payment = payment
+                order.reference_code = create_reference_code()
+                order.save()
+                messages.success(self.request, 'Успешно')
+                return redirect('/')
+
+            # Если нет, то функция вернула ошибку
+            messages.error(self.request, charge)
+            return redirect('/')
 
 
 class OrderSummaryView(LoginRequiredMixin, View):

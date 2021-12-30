@@ -8,18 +8,27 @@ from django.shortcuts import redirect
 from core.models import Coupon
 
 
-def create_charge_or_error(amount, currency, token):
+def create_charge_or_error(amount, currency, token=None, customer=None):
     """Создает соединение с STRIPE API, при успешном
     соединении возвращает экземпляр класса Charge.
     Если произошла ошибка, то возвращает информацию о ней."""
 
     stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    print(token, customer)
     try:
-        charge = stripe.Charge.create(
-            amount=amount,
-            currency=currency,
-            source=token
-        )
+        if customer:
+            charge = stripe.Charge.create(
+                amount=amount,
+                currency=currency,
+                customer=customer,
+            )
+        else:
+            charge = stripe.Charge.create(
+                amount=amount,
+                currency=currency,
+                source=token,
+            )
     except stripe.error.CardError as e:
         body = e.json_body
         err = body.get('error', {})
@@ -29,9 +38,9 @@ def create_charge_or_error(amount, currency, token):
         # Too many requests made to the API too quickly
         return "Время подключения вышло."
 
-    except stripe.error.InvalidRequestError as e:
-        # Invalid parameters were supplied to Stripe's API
-        return 'Не верные параметры.'
+    # except stripe.error.InvalidRequestError as e:
+    #     # Invalid parameters were supplied to Stripe's API
+    #     return 'Не верные параметры.'
 
     except stripe.error.AuthenticationError as e:
         # Authentication with Stripe's API failed

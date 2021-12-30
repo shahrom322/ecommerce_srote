@@ -162,8 +162,16 @@ class CouponForm(forms.Form):
 
 
 class RefundForm(forms.Form):
+    """Форма для заполнения данных о возврате товара."""
     reference_code = forms.CharField(label='Код заказа')
     message = forms.CharField(label='Сообщение', widget=forms.Textarea(attrs={
         'rows': 4
     }))
     email = forms.EmailField(label='Почта')
+
+
+class PaymentForm(forms.Form):
+    """Форма для заполнения данных для оплаты товара."""
+    stripeToken = forms.CharField(required=False)
+    save = forms.BooleanField(required=False)
+    use_default = forms.BooleanField(required=False)
