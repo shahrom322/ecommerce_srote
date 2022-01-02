@@ -40,9 +40,9 @@
                 {% endactiveurl %}
                 <!-- Links -->
 
-                <form class="form-inline">
+                <form class="form-inline" method="get" action="{% url 'core:search' %}">
                     <div class="md-form my-0">
-                        <input class="form-control mr-sm-2" type="text" placeholder="Поиск" aria-label="Search">
+                        <input class="form-control mr-sm-2" type="text" placeholder="Поиск" aria-label="Search" name="q" value="{{ request.GET.q }}">
                     </div>
                 </form>
             </div>

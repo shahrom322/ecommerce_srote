@@ -15,7 +15,6 @@ def create_charge_or_error(amount, currency, token=None, customer=None):
 
     stripe.api_key = settings.STRIPE_SECRET_KEY
 
-    print(token, customer)
     try:
         if customer:
             charge = stripe.Charge.create(
@@ -38,9 +37,9 @@ def create_charge_or_error(amount, currency, token=None, customer=None):
         # Too many requests made to the API too quickly
         return "Время подключения вышло."
 
-    # except stripe.error.InvalidRequestError as e:
-    #     # Invalid parameters were supplied to Stripe's API
-    #     return 'Не верные параметры.'
+    except stripe.error.InvalidRequestError as e:
+        # Invalid parameters were supplied to Stripe's API
+        return 'Не верные параметры.'
 
     except stripe.error.AuthenticationError as e:
         # Authentication with Stripe's API failed

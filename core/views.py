@@ -3,9 +3,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.conf import settings
+from django.db.models import Q
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, TemplateView
 
 from core.models import Item, Order, Address, Payment, Category, Refund, UserProfile
 from core.forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
@@ -165,18 +166,13 @@ class PaymentView(LoginRequiredMixin, View):
                 if userprofile.stripe_customer_id:
                     customer = stripe.Customer.retrieve(
                         userprofile.stripe_customer_id,
-                        # source=token,
-                        # expand=['sources'],
                     )
-                    print('1block', customer)
                 else:
                     customer = stripe.Customer.create(
                         email=self.request.user.email,
                         source=token,
                         expand=['sources'],
                     )
-                    print('2block', customer)
-                    # customer.sources.create(source=token)
                     userprofile.stripe_customer_id = customer['id']
                     userprofile.one_click_purchasing = True
                     userprofile.save()
@@ -230,6 +226,24 @@ class OrderSummaryView(LoginRequiredMixin, View):
         except Order.DoesNotExist:
             messages.error(self.request, 'Для начала добавьте товар в корзину')
             return redirect('/')
+
+
+class SearchView(TemplateView):
+    """Вывод страницы с поиском по товарам."""
+
+    template_name = 'home.html'
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(**kwargs)
+        search_query = self.request.GET.get('q')
+        try:
+            context['items'] = Item.objects.filter(
+                Q(title__icontains=search_query) | Q(description__icontains=search_query)
+            )
+        except ValueError:
+            context['items'] = None
+        context['categories'] = Category.objects.all()
+        return context
 
 
 class ItemDetailView(DetailView):
