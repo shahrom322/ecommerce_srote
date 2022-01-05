@@ -10,7 +10,7 @@
   <main >
     <div class="container wow fadeIn">
 
-      <h2 class="my-5 h2 text-center">Payment</h2>
+      <h2 class="my-5 h2 text-center">Оплата</h2>
 
       <div class="row">
 
@@ -33,7 +33,7 @@
                   {% csrf_token %}
                   <input type="hidden" name="use_default" value="true">
                   <div class="stripe-form-row">
-                    <button id="stripeBtn">Submit Payment</button>
+                    <button id="stripeBtn">Подтвердить оплату</button>
                   </div>
                   <div id="card-errors" role="alert"></div>
               </form>
@@ -44,17 +44,17 @@
                   {% csrf_token %}
                   <div class="stripe-form-row" id="creditCard">
                       <label for="card-element" id="stripeBtnLabel">
-                          Credit or debit card
+                          Введите данные
                       </label>
                       <div id="card-element" class="StripeElement StripeElement--empty"><div class="__PrivateStripeElement" style="margin: 0px !important; padding: 0px !important; border: none !important; display: block !important; background: transparent !important; position: relative !important; opacity: 1 !important;"><iframe frameborder="0" allowtransparency="true" scrolling="no" name="__privateStripeFrame5" allowpaymentrequest="true" src="https://js.stripe.com/v3/elements-inner-card-19066928f2ed1ba3ffada645e45f5b50.html#style[base][color]=%2332325d&amp;style[base][fontFamily]=%22Helvetica+Neue%22%2C+Helvetica%2C+sans-serif&amp;style[base][fontSmoothing]=antialiased&amp;style[base][fontSize]=16px&amp;style[base][::placeholder][color]=%23aab7c4&amp;style[invalid][color]=%23fa755a&amp;style[invalid][iconColor]=%23fa755a&amp;componentName=card&amp;wait=false&amp;rtl=false&amp;keyMode=test&amp;origin=https%3A%2F%2Fstripe.com&amp;referrer=https%3A%2F%2Fstripe.com%2Fdocs%2Fstripe-js&amp;controllerId=__privateStripeController1" title="Secure payment input frame" style="border: none !important; margin: 0px !important; padding: 0px !important; width: 1px !important; min-width: 100% !important; overflow: hidden !important; display: block !important; height: 19.2px;"></iframe><input class="__PrivateStripeElement-input" aria-hidden="true" aria-label=" " autocomplete="false" maxlength="1" style="border: none !important; display: block !important; position: absolute !important; height: 1px !important; top: 0px !important; left: 0px !important; padding: 0px !important; margin: 0px !important; width: 100% !important; opacity: 0 !important; background: transparent !important; pointer-events: none !important; font-size: 16px !important;"></div></div>
                   </div>
                   <div class="stripe-form-row">
-                    <button id="stripeBtn">Submit Payment</button>
+                    <button id="stripeBtn">Подтвердить оплату</button>
                   </div>
                   <div class="stripe-form-row">
                     <div class="custom-control custom-checkbox">
                       <input type="checkbox" class="custom-control-input" name="save" id="save_card_info">
-                      <label class="custom-control-label" for="save_card_info">Save for future purchases</label>
+                      <label class="custom-control-label" for="save_card_info">Сохранить данные</label>
                     </div>
                   </div>
                   <div id="card-errors" role="alert"></div>
@@ -76,7 +76,66 @@
 {% block extra_scripts %}
 
 <script src="https://js.stripe.com/v3/"></script>
-<script nonce="" src="{% static 'js/stripe.js' %}"></script>
+<script nonce="">
+    var stripe = Stripe('{{STRIPE_PUBLIC_KEY}}');
+var elements = stripe.elements();
+
+// Custom styling can be passed to options when creating an Element.
+var style = {
+  base: {
+    // Add your base input styles here. For example:
+    fontSize: '16px',
+    color: '#32325d',
+  },
+};
+
+// Create an instance of the card Element.
+var card = elements.create('card', {style: style});
+
+// Add an instance of the card Element into the `card-element` <div>.
+card.mount('#card-element');
+
+var form = document.getElementById('stripe-form');
+form.addEventListener('submit', function(event) {
+  event.preventDefault();
+
+  stripe.createToken(card).then(function(result) {
+    if (result.error) {
+      // Inform the customer that there was an error.
+      var errorElement = document.getElementById('card-errors');
+      errorElement.textContent = result.error.message;
+    } else {
+      // Send the token to your server.
+      stripeTokenHandler(result.token);
+    }
+  });
+});
+
+function stripeTokenHandler(token) {
+  // Insert the token ID into the form so it gets submitted to the server
+  var form = document.getElementById('stripe-form');
+  var hiddenInput = document.createElement('input');
+  hiddenInput.setAttribute('type', 'hidden');
+  hiddenInput.setAttribute('name', 'stripeToken');
+  hiddenInput.setAttribute('value', token.id);
+  form.appendChild(hiddenInput);
+
+  // Submit the form
+  form.submit();
+}
+ var currentCardForm = $('.current-card-form');
+  var newCardForm = $('.new-card-form');
+  var use_default_card = document.querySelector("input[name=use_default_card]");
+  use_default_card.addEventListener('change', function() {
+    if (this.checked) {
+      newCardForm.hide();
+      currentCardForm.show()
+    } else {
+      newCardForm.show();
+      currentCardForm.hide()
+    }
+  })
+</script>
 
 
 {% endblock extra_scripts %}
